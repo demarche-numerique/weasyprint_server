@@ -1,7 +1,7 @@
 import os
 from unittest import TestCase
 from weasyprint import HTML
-from src.custom_fetcher import custom_url_fetcher
+from src.custom_fetcher import CustomURLFetcher
 
 fixtures_dir = "tests/fixtures"
 output_dir = "tmp"
@@ -30,7 +30,7 @@ class TestIntegrations(TestCase):
                 html = HTML(
                     string=string_html,
                     base_url=os.environ.get("BASE_URL"),
-                    url_fetcher=custom_url_fetcher,
+                    url_fetcher=CustomURLFetcher(),
                 )
 
                 pdf = html.write_pdf()
