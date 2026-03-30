@@ -1,8 +1,10 @@
 import json
+import os
 import http.server
 import socketserver
 import threading
 from unittest import TestCase
+from unittest.mock import patch
 from src.app import create_app
 
 
@@ -69,3 +71,17 @@ class TestIntegrations(TestCase):
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.headers["Content-Type"], "application/json")
         self.assertEqual(response.get_json(), {"error": "an asset is missing"})
+
+    def test_generation_crash_returns_500(self):
+        def crashing_worker(html_string, base_url, queue):
+            os.abort()
+
+        with patch("src.app._pdf_worker", crashing_worker):
+            response = self.app.post(
+                "/pdf",
+                data=json.dumps({"html": "<h1>test</h1>"}),
+                content_type="application/json",
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.get_json(), {"error": "pdf generation crashed"})

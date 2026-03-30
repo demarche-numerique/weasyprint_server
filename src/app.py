@@ -1,5 +1,6 @@
 import os
 import sys
+import multiprocessing
 from flask import Flask, request, make_response
 from werkzeug.exceptions import HTTPException
 from weasyprint import HTML
@@ -9,6 +10,43 @@ from .logger import ERROR_LOGGER, ACCESS_LOGGER
 import time
 import json
 import datetime
+
+
+def _pdf_worker(html_string, base_url, queue):
+    """Runs WeasyPrint in an isolated subprocess to survive segfaults."""
+    try:
+        html = HTML(
+            string=html_string, base_url=base_url, url_fetcher=custom_url_fetcher
+        )
+        pdf = html.write_pdf()
+        queue.put(("ok", pdf))
+    except AttributeError:
+        queue.put(("missing_asset", None))
+    except Exception as e:
+        queue.put(("error", str(e)))
+
+
+def _generate_pdf(html_string, base_url):
+    ctx = multiprocessing.get_context("fork")
+    queue = ctx.Queue()
+    process = ctx.Process(target=_pdf_worker, args=(html_string, base_url, queue))
+    process.start()
+    process.join(timeout=120)
+
+    if process.is_alive():
+        process.kill()
+        process.join()
+        raise TimeoutError("PDF generation timed out")
+
+    if not queue.empty():
+        status, result = queue.get_nowait()
+        if status == "ok":
+            return result
+        if status == "missing_asset":
+            raise AttributeError("an asset is missing")
+        raise RuntimeError(result)
+
+    raise RuntimeError(f"PDF generation crashed (exit code {process.exitcode})")
 
 
 def before_send(event, _hint):
@@ -52,17 +90,18 @@ def create_app(test_config=None):
     def pdf():
         request_data = request.get_json()
         string_html = request_data["html"]
-        html = HTML(
-            string=string_html,
-            base_url=app.config["BASE_URL"],
-            url_fetcher=custom_url_fetcher,
-        )
         try:
-            generated_pdf = html.write_pdf()
+            generated_pdf = _generate_pdf(string_html, app.config["BASE_URL"])
         # See the hack in custom_fetcher.py
         except AttributeError:
             sentry_sdk.capture_message("An asset is missing")
             return make_response({"error": "an asset is missing"}, 500)
+        except RuntimeError as e:
+            ERROR_LOGGER.error(
+                "PDF generation crashed", extra={"context": {"error": str(e)}}
+            )
+            sentry_sdk.capture_message(f"PDF generation crashed: {e}")
+            return make_response({"error": "pdf generation crashed"}, 500)
 
         response = make_response(generated_pdf)
         response.headers["Content-Type"] = "application/pdf"
