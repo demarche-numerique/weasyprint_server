@@ -1,0 +1,30 @@
+version: '3.7'
+x-app_common:
+  &app_common
+  build:
+    context: ../../
+    dockerfile: ops/dev/Dockerfile
+    args:
+      UV_VERSION: 0.5.4
+      # use the user id and group id matching the host user
+      USER_ID: 1000
+      GROUP_ID: 1001
+  env_file:
+    - app_env
+  stdin_open: true
+  tty: true
+  volumes:
+    - app_data:/home/app
+  ports:
+    - 5000
+
+services:
+  app:
+    <<: *app_common
+
+volumes:
+  app_data:
+    driver_opts:
+      type: none
+      device: "${PWD}/../../"
+      o: bind
