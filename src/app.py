@@ -53,13 +53,14 @@ def create_app(test_config=None):
     def pdf():
         request_data = request.get_json()
         string_html = request_data["html"]
+        pdf_variant = request_data.get("pdf_variant")
         html = HTML(
             string=string_html,
             base_url=app.config["BASE_URL"],
             url_fetcher=CustomURLFetcher(),
         )
         try:
-            generated_pdf = html.write_pdf()
+            generated_pdf = html.write_pdf(pdf_variant=pdf_variant)
         except FatalURLFetchingError:
             sentry_sdk.capture_message("An asset is missing")
             return make_response({"error": "an asset is missing"}, 500)

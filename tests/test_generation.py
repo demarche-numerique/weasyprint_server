@@ -1,9 +1,24 @@
 import json
+import re
+import zlib
 import http.server
 import socketserver
 import threading
 from unittest import TestCase
 from src.app import create_app
+
+
+def pdf_contains(pdf_bytes, needle):
+    """Search needle in a PDF, decoding FlateDecode streams along the way."""
+    if needle in pdf_bytes:
+        return True
+    for stream in re.findall(rb"stream\r?\n(.*?)\r?\nendstream", pdf_bytes, re.DOTALL):
+        try:
+            if needle in zlib.decompress(stream):
+                return True
+        except zlib.error:
+            continue
+    return False
 
 
 PORT = 8000
@@ -56,6 +71,21 @@ class TestIntegrations(TestCase):
         self.assertEqual(
             response.headers["Content-Disposition"], "inline;filename=fichier"
         )
+
+    def test_generation_with_pdf_ua_variant(self):
+        html = '<link rel="stylesheet" type="text/css" href="main.css" /> <h1>Hello, world!</h1>'
+        data = {"html": html, "pdf_variant": "pdf/ua-1"}
+
+        response = self.app.post(
+            "/pdf",
+            data=json.dumps(data),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Content-Type"], "application/pdf")
+        # The PDF/UA variant embeds an XMP metadata stream tagging the document
+        # as PDF/UA (pdfuaid namespace) and enables accessibility tags.
+        self.assertTrue(pdf_contains(response.data, b"pdfuaid"))
 
     def test_failing_generation_caused_by_missing_assets(self):
         html = '<link rel="stylesheet" type="text/css" href="missing.css" /> <h1>Hello, world!</h1>'
