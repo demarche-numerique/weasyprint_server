@@ -51,3 +51,14 @@ uv run ruff format --check && uv run ruff check
 ## Packaging
 
 voir package_scripts/main.sh
+
+## installation par dépôt debian
+En root (ou en préfixant les commandes par `sudo`), exécuter les commandes suivantes :
+``` bash
+# ajout du dépôt de Démarche Numerique
+echo 'deb [signed-by=/usr/share/keyrings/packages.demarche.numerique.gouv.fr.gpg] http://packages.demarche.numerique.gouv.fr/jammy /' > /etc/apt/sources.list.d/packages_demarche_numerique.list
+curl -s https://demarche.numerique.gouv.fr/packages.demarche.numerique.gouv.fr.gpg -o /usr/share/keyrings/packages.demarche.numerique.gouv.fr.gpg
+
+# installation
+apt-get update && apt-get install weasyprint-server
+```
