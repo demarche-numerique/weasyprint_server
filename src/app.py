@@ -53,7 +53,8 @@ def create_app(test_config=None):
     def pdf():
         request_data = request.get_json()
         string_html = request_data["html"]
-        pdf_variant = request_data.get("pdf_variant")
+        upstream_context = request_data.get("upstream_context") or {}
+        pdf_variant = upstream_context.get("pdf_variant")
         html = HTML(
             string=string_html,
             base_url=app.config["BASE_URL"],

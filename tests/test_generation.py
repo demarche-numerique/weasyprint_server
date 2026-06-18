@@ -74,7 +74,7 @@ class TestIntegrations(TestCase):
 
     def test_generation_with_pdf_ua_variant(self):
         html = '<link rel="stylesheet" type="text/css" href="main.css" /> <h1>Hello, world!</h1>'
-        data = {"html": html, "pdf_variant": "pdf/ua-1"}
+        data = {"html": html, "upstream_context": {"pdf_variant": "pdf/ua-1"}}
 
         response = self.app.post(
             "/pdf",
