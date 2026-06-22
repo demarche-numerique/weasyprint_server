@@ -13,6 +13,13 @@ dependencies = [
 ]
 
 [tool.uv]
+# La version de uv ici doit rester alignée avec celle épinglée dans
+# package_scripts/Dockerfile, sinon le build CI échoue à parser uv.lock
+# (erreur cryptique « SourceWire »). Ce garde-fou fait échouer uv tôt
+# avec un message clair en cas de divergence. La borne haute évite qu'un
+# uv d'une série plus récente régénère un uv.lock que le Dockerfile ne
+# saura plus lire : bumper les deux ensemble.
+required-version = ">=0.11.22,<0.12"
 dev-dependencies = [
     "ruff>=0.6.2",
     "python-dotenv>=1.0.1",
