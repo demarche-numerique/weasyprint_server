@@ -20,7 +20,9 @@ dependencies = [
 # uv d'une série plus récente régénère un uv.lock que le Dockerfile ne
 # saura plus lire : bumper les deux ensemble.
 required-version = ">=0.11.22,<0.12"
-dev-dependencies = [
+
+[dependency-groups]
+dev = [
     "ruff>=0.6.2",
     "python-dotenv>=1.0.1",
     "pytest>=9.0.2",
